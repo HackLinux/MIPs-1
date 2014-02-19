@@ -11,7 +11,7 @@
 #include<stdbool.h>
 
 bool breakValue = false;
-int currentAddr   = 128;
+unsigned int currentAddr   = 128;
 //storing breakaddress in a global variable. will be set only once when break is called.
 //Will be used to stop the program  and to Find the data section.
 int breakAddress = 128;
@@ -41,11 +41,24 @@ char* instrStr;
 
 void printToOutput(char* instrString, FILE** outputfile, int currentByteAddr, int dataAddress, int dataSize) {
 	static int cycleNumber = 1;
-	printf("Inside here");
+	//printf("Inside here");
 	fprintf(*outputfile, "--------------------\n");
-		
-	fprintf(*outputfile, "Cycle:%d\t%d\t%s\n", cycleNumber, currentByteAddr, instrString);
-	fprintf(*outputfile, "\n");
+	char instrToken[200];
+	char* token;
+	//printf("\n Here is the string %s", instrString);
+	
+
+	//printf("%s", instrString);	
+	token = strtok(instrString, "\t");
+	while(token != NULL) {
+		strcpy(instrToken, token);
+		//printf("\n%s is token", token);
+		token = strtok(NULL, "\t");
+	}
+	//printf("instrToken is %s\n", instrToken);	
+
+	fprintf(*outputfile, "Cycle:%d\t%d\t%s\n", cycleNumber, currentByteAddr, instrToken);
+	//fprintf(*outputfile, "\n");
 	int i = 0;
 	fprintf(*outputfile,"Registers\n");
 	for(i = 0; i < 32; i++) {
@@ -54,24 +67,24 @@ void printToOutput(char* instrString, FILE** outputfile, int currentByteAddr, in
 				fprintf(*outputfile, "\n");
 			}
 			if(i < 10) {
-				fprintf(*outputfile, "R%d%d", 0, i);
-
+				fprintf(*outputfile, "R%d%d:", 0, i);
+				fprintf(*outputfile, "\t%d", registers[i]);
 			} else {
-				fprintf(*outputfile, "R%d", i);
+				fprintf(*outputfile, "R%d:", i);
+				fprintf(*outputfile, "\t%d", registers[i]);
 			}
 		} else {
 			fprintf(*outputfile, "\t%d",registers[i]);	
 		}
 	}	
-	fprintf(*outputfile, "\n");
-	fprintf(*outputfile,"Data\n");
+	fprintf(*outputfile, "\n\n");
+	fprintf(*outputfile,"Data");
 	int j = 0;
+	printf("dataAddress is %d\n", breakAddress + 4);
 	for(j = 0; j < dataSize; j++) {
 		if((j % 8) == 0) {
-			if(i > 0) {
-				fprintf(*outputfile, "\n");
-			}
-			fprintf(*outputfile, "%d",  dataAddress + j);
+			fprintf(*outputfile, "\n");
+			fprintf(*outputfile, "%d:\t%d",  breakAddress + 4 + j*4, data[j]);
 		} else  {	
 			fprintf(*outputfile, "\t%d", data[j]);
 		}
@@ -94,11 +107,11 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 	while(fgets(binaryString, 100, *temp) != NULL) {
 		i++;	
 	}
-	printf("value for i is %d", i);
-	printf("value for dataAddress is %d", dataAddress);
-	printf("size is %d", (i - dataAddress));	
+	//printf("value for i is %d", i);
+	//printf("value for dataAddress is %d", dataAddress);
+	//printf("size is %d", (i - dataAddress));	
 	dataSize = i - dataAddress;
-	printf("data size is %d\n", dataSize);
+	//printf("data size is %d\n", dataSize);
 
 	data = (int*)malloc(sizeof(int)*dataSize);
 
@@ -108,9 +121,9 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 	while(fgets(binaryString, 100, *temp) != NULL) {
 		if(j >= dataStartAddress) {
 			int t1 = strtol(binaryString, &end, 10);
-			printf("%d\n", t1);
+			//printf("%d\n", t1);
 			int t2 = strtol(end, &end, 10);
-			printf("%d\n", t2);
+			//printf("%d\n", t2);
 			data[j-dataStartAddress] = t2;
 		} 
 		j++;
@@ -128,19 +141,20 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 	int offset          = -1;
 		
 	while(fgets(binaryString, 100, *temp) != NULL) {
-		printf("%s",binaryString);
+		//printf("%s",binaryString);
+		char finalInstrString[200];
+		strcpy(finalInstrString, binaryString);
 		instrString      = strtok(binaryString, "\t");
-		printf("instrString is %s", instrString);
-		char* finalInstrString = instrString;
+		//printf("instrString is %s", instrString);
 		currentByteAddr  = atoi(instrString);
 		instrString = strtok(NULL, "\t");		
-		printf("After second tokenizing %s\n", instrString);	
-		printf("currentAddr in bytes = %d\n", currentByteAddr);
+		//printf("After second tokenizing %s\n", instrString);	
+		//printf("currentAddr in bytes = %d\n", currentByteAddr);
 		if(strcmp(instrString, JUMP) == 0) {
 			printf("Inside JUMP");
 			instrString = strtok(NULL,"\t");
 			int jumpAddress = (atoi(instrString) - 128)/4;
-			printf("Jumpaddress is %d", jumpAddress);
+			//printf("Jumpaddress is %d", jumpAddress);
 			//fseek(*temp, 0, jumpAddress);
 			int j = 0;
 			fseek(*temp,0,SEEK_SET);
@@ -148,7 +162,7 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 				fgets(binaryString, 100,*temp);
 				j++;
 			}
-			printf(" address jumped to %ld", ftell(*temp));
+			//printf(" address jumped to %ld", ftell(*temp));
 						
 			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
@@ -162,7 +176,7 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			int registerB = atoi(instrString);
 			instrString = strtok(NULL,"\t");
 			int jumpAddress = (atoi(instrString) + currentByteAddr + 4 - 128)/4;
-			printf("Inside BEQ jump address is %d", jumpAddress);	
+			//printf("Inside BEQ jump address is %d", jumpAddress);	
 			if(registers[registerA] == registers[registerB]) {
 				printf("BEQing");
 				int j = 0;
@@ -171,9 +185,10 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 					fgets(binaryString, 100,*temp);
 					j++;
 				}
-				printf(" address jumped to %ld\n", ftell(*temp));
+				//printf(" address jumped to %ld\n", ftell(*temp));
 			}
 			//print()
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -184,7 +199,7 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 		        rs          = atoi(instrString);
 			instrString = strtok(NULL,"\t");
 			offset      = atoi(instrString);
-			int jumpAddress = (offset + currentByteAddr + 4 - 128)/4 + 1;
+			int jumpAddress = (offset + currentByteAddr + 4 - 128)/4;
 		
 			if(registers[rs] > 0) {	
 				printf("BGTZing");
@@ -194,12 +209,13 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 					fgets(binaryString, 100,*temp);
 					j++;
 				}
-				printf("This is final line :: %s\n", binaryString);
-				printf(" address jumped to %ld", ftell(*temp));
+				//printf("This is final line :: %s\n", binaryString);
+				//printf(" address jumped to %ld", ftell(*temp));
 
 			}
 				
 			//print()
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -209,6 +225,7 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 				instrString = strtok(NULL, "\t");			
 			}
 			//print()
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			break;
 		} 
 		
@@ -220,22 +237,30 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			offset      = atoi(instrString);
 			instrString = strtok(NULL, "\t");
 			rt          = atoi(instrString);
-		     	data[(registers[rt] + offset - dataStartAddress)/4] = registers[rt];
-			printf("%d\n", data[(registers[rt] + offset - dataStartAddress)/4]);		
-			//print()
+		     	data[(registers[rt] + offset - (breakAddress + 4))/4] = registers[rs];
+			printf("The register value of rs is %d\n", registers[rs]);
+			printf("The register value of rt is %d\n", registers[rt]);
+			printf("The register value is %d\n", registers[rt]);
+			printf("Index of data is %d\n", (registers[rt] + offset - breakAddress - 4)/4);
+			printf("Storing word :: %d\n", data[(registers[rt] + offset - (breakAddress + 4))/4]);		
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
 		if(strcmp(instrString, LW) == 0) {
-			printf("Inside SW");
+			printf("Inside LW");
 			instrString   = strtok(NULL, "\t");
 			rd            = atoi(instrString);
 			instrString   = strtok(NULL, "\t");
 			offset        = atoi(instrString);
 			instrString   = strtok(NULL, "\t");
 			rt           = atoi(instrString);
-		     	registers[rd] = data[(registers[rt] + offset - dataStartAddress)/4];		
+		     	registers[rd] = data[(registers[rt] + offset - (breakAddress + 4))/4];
+			printf("The register value is %d\n", registers[rd]);
+			printf("Index of data is %d\n", (registers[rt] + offset - breakAddress - 4)/4);
+			printf("Loading word :: %d\n", data[(registers[rt] + offset - (breakAddress + 4))/4]);		
 			printf("%d\n", registers[rd]);		
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -248,7 +273,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = registers[rs] + registers[rt];
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -261,7 +287,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = registers[rs] - registers[rt];
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -274,7 +301,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = registers[rs] * registers[rt];
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -287,7 +315,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = registers[rs] & registers[rt];
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -300,7 +329,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = registers[rs] | registers[rt];
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -313,7 +343,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = registers[rs] ^ registers[rt];
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -326,7 +357,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			rt            = atoi(instrString);
 			registers[rd] = ~(registers[rs] | registers[rt]);
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -339,7 +371,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			int immediate     = atoi(instrString);
 			registers[rd] = registers[rs] + immediate;
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -352,7 +385,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			int immediate     = atoi(instrString);
 			registers[rd] = registers[rs] & immediate;
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -365,7 +399,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			int immediate     = atoi(instrString);
 			registers[rd] = registers[rs] | immediate;
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -378,7 +413,8 @@ void static execute(FILE** temp, FILE** fpSimOutput) {
 			instrString   = strtok(NULL, "\t");
 			int immediate     = atoi(instrString);
 			registers[rd] = registers[rs] ^ immediate;
-			printf("%d\n", registers[rd]);
+			//printf("%d\n", registers[rd]);
+			printToOutput(finalInstrString, fpSimOutput, currentByteAddr, dataAddress, dataSize);
 			continue;
 		} 
 		
@@ -401,7 +437,7 @@ void static disassemble(char* binaryString, FILE** fpDisAssemblyOutput, FILE** t
 	
 	char *instrStr;
 	fputs(binaryString, *fpDisAssemblyOutput);
-	printf("breakValue is %d", breakValue);
+	//printf("breakValue is %d", breakValue);
 	if(!breakValue) {
 	/*
 	 * Convert the 32 bit instruction to binary and 
@@ -422,29 +458,50 @@ void static disassemble(char* binaryString, FILE** fpDisAssemblyOutput, FILE** t
 		int destRegister    = 0;
 		switch(category) {
 			case 0:
-				jump       = (j & 0x03FFFFFF) << 2;
+				jump                  = (j & 0x03FFFFFF) << 2;
 				
-				destRegister   = (j & 0x0000FA00) >> 11;
-				sourceRegister = (j & 0x03E00000) >> 21;
-				rtRegister     = (j & 0x001F0000) >> 16;
-				int immediate      = (j & 0x0000FFFF) << 2;
-				int offset         = (j & 0x0000FFFF);	
-				printf("Value of instr is %d", instr);
+				destRegister          = (j & 0x0000FA00) >> 11;
+				sourceRegister        = (j & 0x03E00000) >> 21;
+				rtRegister            = (j & 0x001F0000) >> 16;
+				/*
+				int immediate         = (j & 0x0000FFFF) << 2;
+				*/
+				int immediate         = (j & 0x03FFFFFF) << 2;
+				int check             = (immediate & 0x08000000) >> 27;
+				if(check == 1) {
+					immediate = 0xF0000000 | immediate;
+					printf("immediate initial is %d\n", immediate);	
+				}
+			        printf("check is %d\n", check);
+					
+				int offset            = (j & 0x0000FFFF);
+				unsigned int  msbBits = (currentAddr & 0xF0000000);
+				jump                  = (jump | msbBits);	
+				//printf("Value of instr is %d", instr);
+				
+				int signedOffset      = (j & 0x0000FFFF);
+				int valueCheck        = (signedOffset & 0x00008000) >> 15;
+				signedOffset = signedOffset << 2;
+				printf("signedOFfset is %d\n", signedOffset);					
+			        if(valueCheck == 1) {
+					signedOffset = 0xFFFC0000 | signedOffset;
+					printf("signed offset is %d\n", signedOffset);
+				}	
 				switch(instr) {
 					//Jump
 					case 0:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tJ #%d\n", currentAddr, jump);
-						fprintf(*temp, "%d\tJ\t%d\n", currentAddr, jump);
+						fprintf(*temp, "%d\tJ\t%d\tJ #%d\n", currentAddr, jump, jump);
 						break;
 					//BEQ
 					case 2:
-						fprintf(*fpDisAssemblyOutput, "\t%d\tBEQ R%d, R%d, #%d\n", currentAddr, sourceRegister, rtRegister, immediate);		
-						fprintf(*temp, "%d\tBEQ\t%d\t%d\t%d\n", currentAddr, sourceRegister, rtRegister, immediate);		
+						fprintf(*fpDisAssemblyOutput, "\t%d\tBEQ R%d, R%d, #%d\n", currentAddr, sourceRegister, rtRegister, signedOffset);		
+						fprintf(*temp, "%d\tBEQ\t%d\t%d\t%d\t%d\tBEQ R%d, R%d, #%d\n", currentAddr, sourceRegister, rtRegister, signedOffset, currentAddr, sourceRegister, rtRegister, signedOffset);		
 						break;
 					//BGTZ
 					case 4:
-						fprintf(*fpDisAssemblyOutput, "\t%d\tBGTZ R%d, #%d\n", currentAddr, sourceRegister, immediate);		
-						fprintf(*temp, "%d\tBGTZ\t%d\t%d\n", currentAddr, sourceRegister, immediate);		
+						fprintf(*fpDisAssemblyOutput, "\t%d\tBGTZ R%d, #%d\n", currentAddr, sourceRegister, signedOffset);		
+						fprintf(*temp, "%d\tBGTZ\t%d\t%d\t%d\tBGTZ R%d, #%d\n", currentAddr, sourceRegister, signedOffset, currentAddr, sourceRegister, signedOffset);		
 						break;
 					//BREAK
 					case 5:
@@ -453,18 +510,18 @@ void static disassemble(char* binaryString, FILE** fpDisAssemblyOutput, FILE** t
 						breakAddress = currentAddr;
 						
 						fprintf(*fpDisAssemblyOutput, "\t%d\tBREAK\n", currentAddr, jump);		
-						fprintf(*temp,"%d\tBREAK\n" , currentAddr, jump);		
+						fprintf(*temp,"%d\tBREAK\t%d\tBREAK\n" , currentAddr, jump, currentAddr, jump);		
 						break;
 					//SW
 					case 6:
 
 						fprintf(*fpDisAssemblyOutput, "\t%d\tSW R%d, %d(R%d)\n", currentAddr, rtRegister, offset, sourceRegister);		
-						fprintf(*temp, "%d\tSW\t%d\t%d\t%d\n", currentAddr, rtRegister, offset, sourceRegister);		
+						fprintf(*temp, "%d\tSW\t%d\t%d\t%d\t%d\tSW R%d, %d(R%d)\n", currentAddr, rtRegister, offset, sourceRegister, currentAddr, rtRegister, offset, sourceRegister);		
 						break;
 					//LW
 					case 7:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tLW R%d, %d(R%d)\n", currentAddr, rtRegister, offset, sourceRegister);		
-						fprintf(*temp, "%d\tLW\t%d\t%d\t%d\n", currentAddr, rtRegister, offset, sourceRegister);		
+						fprintf(*temp, "%d\tLW\t%d\t%d\t%d\t%d\tLW R%d, %d(R%d)\n", currentAddr, rtRegister, offset, sourceRegister,currentAddr, rtRegister,offset, sourceRegister);		
 						break;
 				}
 				break;
@@ -477,37 +534,37 @@ void static disassemble(char* binaryString, FILE** fpDisAssemblyOutput, FILE** t
 					//ADD
 					case 0:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tADD R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);	
-						fprintf(*temp, "%d\tADD\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);	
+						fprintf(*temp, "%d\tADD\t%d\t%d\t%d\t%d\tADD R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);	
 						break;
 					//SUB
 					case 1:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tSUB R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
-						fprintf(*temp, "%d\tSUB\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*temp, "%d\tSUB\t%d\t%d\t%d\t%d\tSUB R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
 						break;
 					//MUL
 					case 2:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tMUL R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
-						fprintf(*temp, "%d\tMUL\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*temp, "%d\tMUL\t%d\t%d\t%d\t%d\tMUL R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
 						break;
 					//AND
 					case 3:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tAND R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
-						fprintf(*temp, "%d\tAND\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*temp, "%d\tAND\t%d\t%d\t%d\t%d\tAND R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
 						break;
 					//OR
 					case 4:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
-						fprintf(*temp, "%d\tOR\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*temp, "%d\tOR\t%d\t%d\t%d\t%d\tOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
 						break;
 					//XOR
 					case 5:
-						fprintf(*fpDisAssemblyOutput, "\t%d\tXOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
-						fprintf(*temp, "%d\tXOR\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*fpDisAssemblyOutput, "\t%d\tXOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*temp, "%d\tXOR\t%d\t%d\t%d\t%d\tXOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
 						break;
 					//NOR
 					case 6:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tNOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
-						fprintf(*temp, "%d\tNOR\t%d\t%d\t%d\n", currentAddr, destRegister, sourceRegister, rtRegister);		
+						fprintf(*temp, "%d\tNOR\t%d\t%d\t%d\t%d\tNOR R%d, R%d, R%d\n", currentAddr, destRegister, sourceRegister, rtRegister, currentAddr, destRegister, sourceRegister, rtRegister);		
 						break;
 				}
 				break;
@@ -516,27 +573,32 @@ void static disassemble(char* binaryString, FILE** fpDisAssemblyOutput, FILE** t
 				sourceRegister = (j & 0x1F000000) >> 24;
 				rtRegister     = (j & 0x00F80000) >> 19;
 				immediate      = (j & 0x0000FFFF);
+				check             = (immediate & 0x00008000) >> 15;
+			        printf("check is %d\n", check);
+				if(check == 1) {
+					immediate = (0xFFFF0000 | immediate); 
+				}	
 				instr =          (j & 0x00070000) >> 16;
 				switch(instr) {
 					//ADDI
 					case 0:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tADDI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
-						fprintf(*temp, "%d\tADDI\t%d\t%d\t%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
+						fprintf(*temp, "%d\tADDI\t%d\t%d\t%d\t%d\tADDI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate, currentAddr, rtRegister, sourceRegister, immediate);		
 					break;
 					//ANDI
 					case 1:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tANDI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
-						fprintf(*temp, "%d\tANDI\t%d\t%d\t%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
+						fprintf(*temp, "%d\tANDI\t%d\t%d\t%d\t%d\tANDI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate, currentAddr, rtRegister, sourceRegister, immediate);		
 						break;
 					//ORI
 					case 2:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tORI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
-						fprintf(*temp, "%d\tORI\t%d\t%d\t%d\n",  currentAddr, rtRegister, sourceRegister, immediate);		
+						fprintf(*temp, "%d\tORI\t%d\t%d\t%d\t%d\tORI R%d, R%d, #%d\n",  currentAddr, rtRegister, sourceRegister, immediate, currentAddr, rtRegister, sourceRegister, immediate);		
 						break;
 					//XORI
 					case 3:
 						fprintf(*fpDisAssemblyOutput, "\t%d\tXORI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
-						fprintf(*temp, "%d\tXORI\t%d\t%d\t%d\n", currentAddr, rtRegister, sourceRegister, immediate);		
+						fprintf(*temp, "%d\tXORI\t%d\t%d\t%d\t%d\tXORI R%d, R%d, #%d\n", currentAddr, rtRegister, sourceRegister, immediate, currentAddr, rtRegister, sourceRegister, immediate);		
 						break;
 				}
 					break;
@@ -556,11 +618,11 @@ void static disassemble(char* binaryString, FILE** fpDisAssemblyOutput, FILE** t
 void static disAssembly(FILE** temp, FILE** inputFile, FILE** fpDisAssemblyOutput, FILE** fpSimOutput) {
 
 	if((*temp) == NULL || (*inputFile) == NULL || (*fpDisAssemblyOutput == NULL) ) {
-		printf("Returning in 1");
+		//printf("Returning in 1");
 		return;
 	}	
 	if((temp == NULL) || inputFile == NULL || fpDisAssemblyOutput == NULL) {
-		printf("Returning in 2");
+		//printf("Returning in 2");
 		return;
 	}
 
@@ -574,7 +636,7 @@ void static disAssembly(FILE** temp, FILE** inputFile, FILE** fpDisAssemblyOutpu
 	 */
 	while(!feof(*inputFile)) {
 		if(fgets(binaryString, 100, *inputFile) != NULL) {
-			printf("%s", binaryString);	
+			//printf("%s", binaryString);	
 			disassemble(binaryString, fpDisAssemblyOutput, temp, fpSimOutput);
 			currentAddr = currentAddr + 4;		
 		}
